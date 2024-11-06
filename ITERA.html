@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGIS ITERA - Complete</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        .custom-controls {
+            padding: 6px;
+            background: white;
+            border-bottom: 1px solid #ccc;
+        }
+        .control-button {
+            margin: 2px;
+            padding: 4px 8px;
+            background: #fff;
+            border: 1px solid #999;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .control-button:hover {
+            background: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([-5.367016, 105.317890], 15);
+
+        // Base maps
+        const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+
+        const esriWorldImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        });
+
+        // Add default base map
+        osm.addTo(map);
+        esriWorldImagery.addTo(map);
+        
+        // Koordinat bangunan
+        const buildingMarkers = {
+            'GKU 1': [-5.3609538, 105.3104674],
+            'GKU 2': [-5.360206558214748, 105.31411629232053],
+            'Gedung A': [-5.357899, 105.314404],
+            'Gedung B': [-5.357887, 105.315336],
+            'Gedung C': [-5.358400, 105.313565],
+            'Gedung D': [-5.358744, 105.313516],
+            'Gedung E': [-5.3600984, 105.3155011],
+            'Gedung F': [-5.3613482, 105.3135694],
+            'Masjid Baitul Ilmi': [-5.359061, 105.312633],
+            'Masjid Raya At-Tanwir': [-5.356759, 105.318823],
+            'Gedung Labtek 1': [-5.360300, 105.310209],
+            'Gedung Labtek 3': [-5.360301, 105.309103],
+            'Gedung Labtek 2 (OZT)': [-5.361512, 105.310453],
+            'Gedung Asrama 1': [-5.358440, 105.317435],
+            'Gedung Asrama 2': [-5.358475, 105.319431],
+            'Gedung Asrama 3': [-5.359153, 105.319033],
+            'Gedung Asrama 4': [-5.359153, 105.317444],
+            'Gedung Asrama 5': [-5.358445, 105.318478],
+            'Kantin BKL': [-5.357602, 105.316506],
+            'Gedung Olahraga': [-5.362397, 105.318953]
+        };
+
+        // Create markers with popups
+        const markers = {};
+        for (const [name, coords] of Object.entries(buildingMarkers)) {
+            markers[name] = L.marker(coords).bindPopup(name);
+        }
+
+        // Add bundaran
+        const roundabouts = [
+            {
+                coords: [-5.363156, 105.312634],
+                options: {
+                    color: 'red',
+                    fillColor: '#f03',
+                    fillOpacity: 0.5,
+                    radius: 20
+                }
+            },
+            {
+                coords: [-5.360813, 105.314847],
+                options: {
+                    color: 'green',
+                    fillColor: '#f03',
+                    fillOpacity: 0.5,
+                    radius: 35
+                }
+            },
+            {
+                coords: [-5.363159, 105.311240],
+                options: {
+                    color: 'green',
+                    fillColor: '#f03',
+                    fillOpacity: 0.5,
+                    radius: 20
+                }
+            }
+        ];
+
+        // Add bundaran to map
+        roundabouts.forEach(roundabout => {
+            L.circle(roundabout.coords, roundabout.options).addTo(map);
+        });
+
+        // Add polygon for Gedung E
+        const buildingEPolygon = L.polygon([
+            [-5.359799, 105.315831],
+            [-5.359957, 105.315831],
+            [-5.359957, 105.315571],
+            [-5.360474, 105.315571],
+            [-5.360474, 105.315401],
+            [-5.359635, 105.315401],
+            [-5.359635, 105.315571],
+            [-5.359799, 105.315571]
+        ]).addTo(map);
+
+        // Layer control configuration
+        const baseMaps = {
+            "OpenStreetMap": osm,
+            "ESRI World Imagery": esriWorldImagery
+        };
+
+        const overlayMaps = markers;
+
+        // Create custom control buttons
+        const customControl = L.Control.extend({
+            options: {
+                position: 'topright'
+            },
+
+            onAdd: function() {
+                const container = L.DomUtil.create('div', 'custom-controls leaflet-control-layers-list');
+                container.innerHTML = `
+                    <button class="control-button" onclick="selectAll()">Select All</button>
+                    <button class="control-button" onclick="unselectAll()">Unselect All</button>
+                `;
+                return container;
+            }
+        });
+
+        // Add layer control and custom control
+        const layerControl = L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+        
+        // Add custom control after a short delay to ensure layer control is rendered
+        setTimeout(() => {
+            const controlDiv = document.querySelector('.leaflet-control-layers-list');
+            const customControls = document.createElement('div');
+            customControls.className = 'custom-controls';
+            customControls.innerHTML = `
+                <button class="control-button" onclick="selectAll()">Select All</button>
+                <button class="control-button" onclick="unselectAll()">Unselect All</button>
+            `;
+            controlDiv.appendChild(customControls);
+        }, 100);
+
+        // Remove specific layers initially
+        map.removeLayer(markers['GKU1']);
+        map.removeLayer(markers['Gedung F']);
+        map.removeLayer(markers['Gedung E']);
+
+        // Function to select all markers
+        function selectAll() {
+            Object.values(markers).forEach(marker => {
+                if (!map.hasLayer(marker)) {
+                    map.addLayer(marker);
+                }
+            });
+        }
+
+        // Function to unselect all markers
+        function unselectAll() {
+            Object.values(markers).forEach(marker => {
+                if (map.hasLayer(marker)) {
+                    map.removeLayer(marker);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
