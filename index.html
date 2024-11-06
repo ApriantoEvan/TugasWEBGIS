@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebGIS ITERA - Complete</title>
+    <title>WebGIS ITERA</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -45,19 +45,20 @@
         // Initialize map
         const map = L.map('map').setView([-5.367016, 105.317890], 15);
 
-        // Base maps
+        // Basemaps
         const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        });
+        }).addTo(map);
 
         const esriWorldImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
         });
 
-        // Add default base map
-        osm.addTo(map);
-        esriWorldImagery.addTo(map);
-        
+        // Function to create markers with popups
+        function createMarker(coords, name) {
+            return L.marker(coords).bindPopup(name);
+        }
+
         // Koordinat bangunan
         const buildingMarkers = {
             'GKU 1': [-5.3609538, 105.3104674],
@@ -82,49 +83,27 @@
             'Gedung Olahraga': [-5.362397, 105.318953]
         };
 
-        // Create markers with popups
         const markers = {};
         for (const [name, coords] of Object.entries(buildingMarkers)) {
-            markers[name] = L.marker(coords).bindPopup(name);
+            markers[name] = createMarker(coords, name);
         }
 
-        // Add bundaran
-        const roundabouts = [
-            {
-                coords: [-5.363156, 105.312634],
-                options: {
-                    color: 'red',
-                    fillColor: '#f03',
-                    fillOpacity: 0.5,
-                    radius: 20
-                }
-            },
-            {
-                coords: [-5.360813, 105.314847],
-                options: {
-                    color: 'green',
-                    fillColor: '#f03',
-                    fillOpacity: 0.5,
-                    radius: 35
-                }
-            },
-            {
-                coords: [-5.363159, 105.311240],
-                options: {
-                    color: 'green',
-                    fillColor: '#f03',
-                    fillOpacity: 0.5,
-                    radius: 20
-                }
-            }
-        ];
+        // Helper function to create circles
+        function createCircle(coords, color, radius) {
+            return L.circle(coords, {
+                color: color,
+                fillColor: '#f03',
+                fillOpacity: 0.5,
+                radius: radius
+            }).addTo(map);
+        }
 
-        // Add bundaran to map
-        roundabouts.forEach(roundabout => {
-            L.circle(roundabout.coords, roundabout.options).addTo(map);
-        });
+        // Bundaran
+        createCircle([-5.363156, 105.312634], 'red', 20);
+        createCircle([-5.360813, 105.314847], 'green', 35);
+        createCircle([-5.363159, 105.311240], 'green', 20);
 
-        // Add polygon for Gedung E
+        // Polygon for Gedung E
         const buildingEPolygon = L.polygon([
             [-5.359799, 105.315831],
             [-5.359957, 105.315831],
@@ -136,7 +115,7 @@
             [-5.359799, 105.315571]
         ]).addTo(map);
 
-        // Layer control configuration
+        // Layer controls
         const baseMaps = {
             "OpenStreetMap": osm,
             "ESRI World Imagery": esriWorldImagery
@@ -144,43 +123,28 @@
 
         const overlayMaps = markers;
 
-        // Create custom control buttons
-        const customControl = L.Control.extend({
-            options: {
-                position: 'topright'
-            },
+        // Control for base and overlay maps
+        L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
-            onAdd: function() {
-                const container = L.DomUtil.create('div', 'custom-controls leaflet-control-layers-list');
-                container.innerHTML = `
-                    <button class="control-button" onclick="selectAll()">Select All</button>
-                    <button class="control-button" onclick="unselectAll()">Unselect All</button>
-                `;
-                return container;
-            }
-        });
-
-        // Add layer control and custom control
-        const layerControl = L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+        // Custom control buttons
+        function createCustomControls() {
+            const customControl = L.Control.extend({
+                options: { position: 'topright' },
+                onAdd: function() {
+                    const container = L.DomUtil.create('div', 'custom-controls');
+                    container.innerHTML = `
+                        <button class="control-button" onclick="selectAll()">Select All</button>
+                        <button class="control-button" onclick="unselectAll()">Unselect All</button>
+                    `;
+                    return container;
+                }
+            });
+            map.addControl(new customControl());
+        }
         
-        // Add custom control after a short delay to ensure layer control is rendered
-        setTimeout(() => {
-            const controlDiv = document.querySelector('.leaflet-control-layers-list');
-            const customControls = document.createElement('div');
-            customControls.className = 'custom-controls';
-            customControls.innerHTML = `
-                <button class="control-button" onclick="selectAll()">Select All</button>
-                <button class="control-button" onclick="unselectAll()">Unselect All</button>
-            `;
-            controlDiv.appendChild(customControls);
-        }, 100);
+        createCustomControls();
 
-        // Remove specific layers initially
-        map.removeLayer(markers['GKU1']);
-        map.removeLayer(markers['Gedung F']);
-        map.removeLayer(markers['Gedung E']);
-
-        // Function to select all markers
+        // Select/unselect functions for markers
         function selectAll() {
             Object.values(markers).forEach(marker => {
                 if (!map.hasLayer(marker)) {
@@ -189,7 +153,6 @@
             });
         }
 
-        // Function to unselect all markers
         function unselectAll() {
             Object.values(markers).forEach(marker => {
                 if (map.hasLayer(marker)) {
